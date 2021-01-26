@@ -2,15 +2,15 @@
 
 pragma solidity 0.7.6;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v3.3/contracts/token/ERC20/ERC20Pausable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v3.3/contracts/token/ERC20/ERC20Burnable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v3.3/contracts/access/Ownable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/token/ERC20/ERC20Pausable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/token/ERC20/ERC20Burnable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/access/Ownable.sol";
 
 /**
  * @dev Implementation of an {ERC20} token that is pausable, burnable 
  * and has an owner to mint, revoke and pause.
  */
-contract gHOPtoken is ERC20("HOPR Genesis DAO TEST Token", "gtHOP"), ERC20Pausable, ERC20Burnable, Ownable {
+contract gHOPtoken is ERC20("HOPR Genesis DAO Token", "gHOP"), ERC20Pausable, ERC20Burnable, Ownable {
 
     /**
      * @dev Initializes the contract in paused state.
@@ -23,7 +23,7 @@ contract gHOPtoken is ERC20("HOPR Genesis DAO TEST Token", "gtHOP"), ERC20Pausab
     // the compiler needs to know which parent function to call
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20, ERC20Pausable) {
         if (_msgSender() != owner()) { // pause does not apply to owner
-            ERC20Pausable._beforeTokenTransfer(from, to, amount);
+            super._beforeTokenTransfer(from, to, amount);
         }
     }
     
