@@ -44,7 +44,7 @@ const Index = () => {
             flexGrow={1}
             mr={2}
           >
-            Genesis DAO <LinkIcon />
+            HOPR Genesis DAO <LinkIcon />
           </ChakraLink>
         </Text>
         <br/>

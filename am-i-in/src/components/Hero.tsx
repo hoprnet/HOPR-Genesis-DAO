@@ -8,5 +8,5 @@ export const Hero = ({ title, children }: { title: string, children: any }) => (
 )
 
 Hero.defaultProps = {
-  title: 'Am I in the Genesis DAO?',
+  title: 'Am I in the HOPR Genesis DAO?',
 }
