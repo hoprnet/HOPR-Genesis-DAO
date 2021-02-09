@@ -8,6 +8,7 @@ import {
   Input
 } from '@chakra-ui/react'
 import { LinkIcon } from '@chakra-ui/icons'
+import Head from 'next/head'
 
 import { Hero } from '../components/Hero'
 import { Container } from '../components/Container'
@@ -42,6 +43,11 @@ const Index = () => {
 
   return (
     <Container height="100vh">
+      <Head>
+        <title>HOPR Genesis DAO</title>
+        <link rel="icon" href="favicon.ico" />
+      </Head>
+
       <Hero>
         <Text>
           Learn if your address is part of the <ChakraLink
@@ -53,11 +59,11 @@ const Index = () => {
             HOPR Genesis DAO <LinkIcon />
           </ChakraLink>
         </Text>
-        <br/>
+        <br />
         <Formik
           initialValues={{ name: "" }}
           onSubmit={(values, actions) => {
-            setTimeout(async() => {
+            setTimeout(async () => {
               const balance = await xdaiContract.balanceOf(values.name)
               const included = +balance > 0;
               alert(included ? 'You are part of the Genesis DAO' : 'Sorry, you are not part of the Genesis DAO')
