@@ -17,10 +17,17 @@ import { ethers } from "ethers";
 
 
 const Index = () => {
+  console.log('Loaded')
   function validateName(value: string) {
     let error
     if (!value) {
       error = "An ethereum address is required"
+    } else {
+      try {
+        ethers.utils.getAddress(value);
+      } catch (err) {
+        error = "A valid ethereum address is required"
+      }
     }
     return error
   }
