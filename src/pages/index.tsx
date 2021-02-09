@@ -17,7 +17,6 @@ import { ethers } from "ethers";
 
 
 const Index = () => {
-  console.log('Loaded')
   function validateName(value: string) {
     let error
     if (!value) {
