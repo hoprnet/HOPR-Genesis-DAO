@@ -4,11 +4,17 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
-  InputGroup, InputLeftAddon
+  InputGroup, InputLeftAddon, InputRightElement,
 } from "@chakra-ui/react"
+
+import { ActionButton } from './ActionButton';
 
 
 export const TokenInput = ({ symbol = "xHOPR", value = 0}) => {
+  const handleClick = () => {
+    console.log("Swap!")
+  }
+
   return (
     <InputGroup>
       <InputLeftAddon children={symbol} />
@@ -19,6 +25,11 @@ export const TokenInput = ({ symbol = "xHOPR", value = 0}) => {
           <NumberDecrementStepper />
         </NumberInputStepper>
       </NumberInput>
+      <InputRightElement width="4.5rem">
+        <ActionButton h="1.75rem" size="sm" mr="30px" onClick={handleClick}>
+          Swap
+        </ActionButton>
+      </InputRightElement>
     </InputGroup>
   )
 }

@@ -1,17 +1,13 @@
 import Web3Modal from "web3modal";
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { Button, useColorMode } from '@chakra-ui/react'
+
+import { ActionButton } from './ActionButton'
 
 
 export const ConnectWallet = ({ setwxHOPRBalance, setxHOPRBalance, setBalance }) => {
-  const { colorMode } = useColorMode()
   const [web3Modal, setWeb3Modal] = useState();
   const [isLoading, setLoading] = useState(false);
-
-  const bgColor = { light: 'rgb(0, 0, 80, 0.8)', dark: 'rgb(255,255,160,0.8)' }
-  const hoverBgColor = { light: 'rgb(0, 0, 80)', dark: 'rgb(255,255,160)' }
-  const color = { light: 'white', dark: '#414141' }
 
   useEffect(() => {
     const loadModal = () => {
@@ -54,17 +50,11 @@ export const ConnectWallet = ({ setwxHOPRBalance, setxHOPRBalance, setBalance })
   }
 
   return (
-    <Button 
+    <ActionButton 
       onClick={handleClick} 
-      width="100%" 
-      variant="solid" 
-      variantcolor="green"
-      bg={bgColor[colorMode]}
-      color={color[colorMode]}
-      _hover={{ bg: hoverBgColor[colorMode] }}
       isLoading={isLoading}
       >
       Connect Wallet
-    </Button>
+    </ActionButton>
   )
 }
