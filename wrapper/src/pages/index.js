@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react'
 import { useEffect, useState } from "react";
 import Web3Modal from "web3modal";
+import Web3 from 'web3';
 import { ethers } from "ethers";
 
 import { Hero } from '../components/Hero'
@@ -29,12 +30,23 @@ const Index = () => {
   const [address, setAddress] = useState();
 
   const xHOPR_TOKEN_ADDRESS = "0xD057604A14982FE8D88c5fC25Aac3267eA142a08";
+  const wrapper_CONTRACT_ADDRESS = "0x097707143e01318734535676cfe2e5cF8b656ae8";
   const wxHOPR_TOKEN_ADDRESS = "0xD4fdec44DB9D44B8f2b6d529620f9C0C7066A2c1";
+
+  const transferAndCallToken = async (provider, amount = 1) => {
+    const abi = ['function transferAndCall(address, uint256, bytes)'];
+    const tokenContract = new ethers.Contract(
+      xHOPR_TOKEN_ADDRESS,
+      abi,
+      provider.getSigner(),
+    );
+    console.log(wrapper_CONTRACT_ADDRESS, abi, provider.getSigner())
+    return tokenContract.transferAndCall(wrapper_CONTRACT_ADDRESS, amount, '0x');
+  };
 
   useEffect(() => {
     const loadModal = () => {
       const _web3Modal = new Web3Modal({
-        network: "xdai",
         cacheProvider: true,
         providerOptions: {}
       });
@@ -44,24 +56,31 @@ const Index = () => {
   }, [])
 
   const handleTokenSwap = async() => {
-    console.log('Swap', balance, wallet, provider);
+    console.log('Swaping..');
+    transferAndCallToken(provider);
   }
 
   //@TODO: Refactor to a proper Web3Context
   const handleConnectWeb3 = async() => {
     setLoading(true)
-    
     const tokenAddresses = [xHOPR_TOKEN_ADDRESS, wxHOPR_TOKEN_ADDRESS]
 
-    const web3provider = await web3Modal.connect()
-    const provider = new ethers.providers.Web3Provider(web3provider);
+    const modalProvider = await web3Modal.connect();
+    const web3Provider = new Web3(modalProvider);
+    const provider = new ethers.providers.Web3Provider(
+      web3Provider.currentProvider,
+    );
+
     const wallet = provider.getSigner();
     const address = await wallet.getAddress();
     const balance = await provider.getBalance(address);
+    const network = await provider.getNetwork();
 
     const tokenABI = [
       "function balanceOf(address) view returns (uint)",
     ]
+
+    console.log(network, balance, wallet, provider);
 
     const tokenContracts = tokenAddresses.map(tokenAddress => new ethers.Contract(tokenAddress, tokenABI, provider));
     const [xHOPRBalance, wxHOPRBalance] = await Promise.all(tokenContracts.map(async (contract) => contract.balanceOf(address)))
