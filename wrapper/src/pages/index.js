@@ -33,15 +33,24 @@ const Index = () => {
   const wrapper_CONTRACT_ADDRESS = "0x097707143e01318734535676cfe2e5cF8b656ae8";
   const wxHOPR_TOKEN_ADDRESS = "0xD4fdec44DB9D44B8f2b6d529620f9C0C7066A2c1";
 
-  const transferAndCallToken = async (provider, amount = 1) => {
+  const transferAndCallToken = async (provider, amount) => {
     const abi = ['function transferAndCall(address, uint256, bytes)'];
     const tokenContract = new ethers.Contract(
       xHOPR_TOKEN_ADDRESS,
       abi,
       provider.getSigner(),
     );
-    console.log(wrapper_CONTRACT_ADDRESS, abi, provider.getSigner())
-    return tokenContract.transferAndCall(wrapper_CONTRACT_ADDRESS, amount, '0x');
+    return tokenContract.transferAndCall(wrapper_CONTRACT_ADDRESS, ethers.utils.parseEther(amount), '0x');
+  };
+
+  const transferToken = async (provider, amount) => {
+    const abi = ['function transfer(address, uint256)'];
+    const tokenContract = new ethers.Contract(
+      wxHOPR_TOKEN_ADDRESS,
+      abi,
+      provider.getSigner(),
+    )    
+    return tokenContract.transfer(wrapper_CONTRACT_ADDRESS, ethers.utils.parseEther(amount));
   };
 
   useEffect(() => {
@@ -54,11 +63,6 @@ const Index = () => {
     }
     loadModal()
   }, [])
-
-  const handleTokenSwap = async() => {
-    console.log('Swaping..');
-    transferAndCallToken(provider);
-  }
 
   //@TODO: Refactor to a proper Web3Context
   const handleConnectWeb3 = async() => {
@@ -80,17 +84,16 @@ const Index = () => {
       "function balanceOf(address) view returns (uint)",
     ]
 
-    console.log(network, balance, wallet, provider);
-
     const tokenContracts = tokenAddresses.map(tokenAddress => new ethers.Contract(tokenAddress, tokenABI, provider));
     const [xHOPRBalance, wxHOPRBalance] = await Promise.all(tokenContracts.map(async (contract) => contract.balanceOf(address)))
 
     setProvider(provider);
     setWallet(wallet);
     setAddress(address);
-    setBalance(+ethers.utils.formatEther(balance))
-    setxHOPRBalance(+ethers.utils.formatEther(xHOPRBalance))
-    setwxHOPRBalance(+ethers.utils.formatEther(wxHOPRBalance))
+    setBalance(ethers.utils.formatEther(balance))
+    setxHOPRBalance(ethers.utils.formatEther(xHOPRBalance))
+    setwxHOPRBalance(ethers.utils.formatEther(wxHOPRBalance))
+    console.log(network, balance, wallet, provider);
     setLoading(false)
   }
 
@@ -102,10 +105,10 @@ const Index = () => {
       </Text>
       <List spacing={3} my={0}>
         <ListItem>
-          <TokenInput symbol="_xHOPR" value={xHOPRBalance} setValue={setxHOPRBalance} handleSwap={handleTokenSwap} />
+          <TokenInput symbol="xHOPR" address={address} value={xHOPRBalance} setValue={setxHOPRBalance} handleSwap={() => transferAndCallToken(provider, xHOPRBalance)} />
         </ListItem>
         <ListItem>
-          <TokenInput symbol="wxHOPR" value={wxHOPRBalance} setValue={setwxHOPRBalance} handleSwap={handleTokenSwap} />
+          <TokenInput symbol="wxHOPR" address={address} value={wxHOPRBalance} setValue={setwxHOPRBalance} handleSwap={() => transferToken(provider, wxHOPRBalance)} />
         </ListItem>
       </List>
       <ConnectWallet
