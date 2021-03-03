@@ -28,7 +28,7 @@ const Index = () => {
   const [address, setAddress] = useState();
 
   const distributor_CONTRACT_ADDRESS =
-    "0xa1e1E79eA9F39a7Cc82894629C49D6FDF70F0061";
+    "0x987cb736fbfbc4a397acd06045bf0cd9b9defe66";
 
   const getClaimable = async (provider, account, scheduleName) => {
     const abi = [
