@@ -7,7 +7,7 @@ export const ConnectWallet = ({ address, onClick, isLoading }) => {
     <Text>Wallet {address} connected</Text>
   ) : (
     <ActionButton onClick={onClick} isLoading={isLoading}>
-      Connect Wallet (use xDAI-chain)
+      Connect Wallet
     </ActionButton>
   );
 };
