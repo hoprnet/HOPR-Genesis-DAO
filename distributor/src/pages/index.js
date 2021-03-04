@@ -1,10 +1,4 @@
-import {
-  Link as ChakraLink,
-  Text,
-  Code,
-  List,
-  ListItem,
-} from "@chakra-ui/react";
+import { Text, Code, List, ListItem } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import Web3Modal from "web3modal";
 import Web3 from "web3";
@@ -18,13 +12,11 @@ import { Claimable } from "../components/Claimable";
 import { DarkModeSwitch } from "../components/DarkModeSwitch";
 
 const Index = () => {
-  const [balance, setBalance] = useState(0);
-  const [claimable, setClaimable] = useState([]);
   const [web3Modal, setWeb3Modal] = useState();
-  const [isLoading, setLoading] = useState(false);
   const [provider, setProvider] = useState();
+  const [isLoading, setLoading] = useState(false);
+  const [claimable, setClaimable] = useState([]);
   const [chainId, setChainId] = useState();
-  const [wallet, setWallet] = useState();
   const [address, setAddress] = useState();
 
   const XDAI_CHAIN_ID = 100;
@@ -62,6 +54,7 @@ const Index = () => {
     return distributorContract.claim(scheduleName);
   };
 
+  // trigger on initial load
   useEffect(() => {
     const loadModal = () => {
       const _web3Modal = new Web3Modal({
@@ -73,7 +66,46 @@ const Index = () => {
     loadModal();
   }, []);
 
-  //@TODO: Refactor to a proper Web3Context
+  // trigger once provider is set
+  useEffect(() => {
+    const updateProviderData = async () => {
+      setLoading(true);
+
+      const network = await provider.getNetwork();
+      const address = await provider.getSigner().getAddress();
+
+      setChainId(network.chainId);
+      setAddress(address);
+      setLoading(false);
+    };
+
+    if (provider) updateProviderData();
+  }, [provider]);
+
+  // trigger once chain or address changes
+  useEffect(() => {
+    const updateUserData = async () => {
+      setLoading(true);
+
+      const claimable = await Promise.all(
+        schedules.map(async (schedule) => {
+          const amount = await getClaimable(provider, address, schedule);
+
+          return {
+            schedule,
+            claimable: amount,
+            claimablePretty: ethers.utils.formatEther(amount),
+          };
+        })
+      ).then((list) => list.filter((o) => o.claimable > 0));
+
+      setClaimable(claimable);
+      setLoading(false);
+    };
+
+    if (chainId && address) updateUserData();
+  }, [chainId, address]);
+
   const handleConnectWeb3 = async () => {
     setLoading(true);
 
@@ -83,30 +115,12 @@ const Index = () => {
       web3Provider.currentProvider
     );
 
-    const wallet = provider.getSigner();
-    const address = await wallet.getAddress();
-    const balance = await provider.getBalance(address);
-    const network = await provider.getNetwork();
-
-    const claimable = await Promise.all(
-      schedules.map(async (schedule) => {
-        const amount = await getClaimable(provider, address, schedule);
-
-        return {
-          schedule,
-          claimable: amount,
-          claimablePretty: ethers.utils.formatEther(amount),
-        };
-      })
-    ).then((list) => list.filter((o) => o.claimable > 0));
+    modalProvider.on("accountsChanged", (accounts) => setAddress(accounts[0]));
+    modalProvider.on("chainChanged", (chainId) =>
+      setChainId(parseInt(chainId, 16))
+    );
 
     setProvider(provider);
-    setChainId(network.chainId);
-    setWallet(wallet);
-    setAddress(address);
-    setBalance(ethers.utils.formatEther(balance));
-    setClaimable(claimable);
-    console.log(network, balance, wallet, provider);
     setLoading(false);
   };
 
@@ -120,7 +134,7 @@ const Index = () => {
           Utility to claim locked <Code>wxHOPR</Code>.
         </Text>
 
-        {!wallet ? null : isLoading ? (
+        {!address ? null : isLoading ? (
           <Text textAlign="center">Fetching schedules..</Text>
         ) : wrongNetwork ? (
           <Text textAlign="center">Please switch to the xDAI chain.</Text>
