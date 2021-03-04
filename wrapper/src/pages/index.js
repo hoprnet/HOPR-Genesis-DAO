@@ -21,14 +21,16 @@ import { DarkModeSwitch } from '../components/DarkModeSwitch'
 const Index = () => {
   const [balance, setBalance] = useState(0);
   const [xHOPRBalance, setxHOPRBalance] = useState(0);
-  const [wxHOPRBalance, setwxHOPRBalance] = useState(0);
+  const [wxHOPRBalance, setwxHOPRBalance] = useState(0); 
 
   const [web3Modal, setWeb3Modal] = useState();
   const [isLoading, setLoading] = useState(false);
   const [provider, setProvider] = useState();
+  const [chainId, setChainId] = useState();
   const [wallet, setWallet] = useState();
   const [address, setAddress] = useState();
 
+  const XDAI_CHAIN_ID = 100;
   const xHOPR_TOKEN_ADDRESS = "0xD057604A14982FE8D88c5fC25Aac3267eA142a08";
   const wrapper_CONTRACT_ADDRESS = "0x097707143e01318734535676cfe2e5cF8b656ae8";
   const wxHOPR_TOKEN_ADDRESS = "0xD4fdec44DB9D44B8f2b6d529620f9C0C7066A2c1";
@@ -85,9 +87,16 @@ const Index = () => {
     ]
 
     const tokenContracts = tokenAddresses.map(tokenAddress => new ethers.Contract(tokenAddress, tokenABI, provider));
-    const [xHOPRBalance, wxHOPRBalance] = await Promise.all(tokenContracts.map(async (contract) => contract.balanceOf(address)))
+    const [xHOPRBalance, wxHOPRBalance] = await Promise.all(tokenContracts.map(async (contract) => {
+      try {
+        return await contract.balanceOf(address)
+      } catch {
+        return 0
+      }
+    }))
 
     setProvider(provider);
+    setChainId(network.chainId);
     setWallet(wallet);
     setAddress(address);
     setBalance(ethers.utils.formatEther(balance))
@@ -97,20 +106,28 @@ const Index = () => {
     setLoading(false)
   }
 
+  const wrongNetwork = chainId !== XDAI_CHAIN_ID;
+
   return (<Container height="100vh">
     <Hero />
     <Main>
       <Text>
         Utility to wrap <Code>(xHOPR -> wxHOPR)</Code> and unwrap <Code>(wxHOPR -> xHOPR)</Code> xHOPR tokens.
       </Text>
-      <List spacing={3} my={0}>
-        <ListItem>
-          <TokenInput symbol="xHOPR" address={address} value={xHOPRBalance} setValue={setxHOPRBalance} handleSwap={() => transferAndCallToken(provider, xHOPRBalance)} />
-        </ListItem>
-        <ListItem>
-          <TokenInput symbol="wxHOPR" address={address} value={wxHOPRBalance} setValue={setwxHOPRBalance} handleSwap={() => transferToken(provider, wxHOPRBalance)} />
-        </ListItem>
-      </List>
+      {
+        !provider ? null : wrongNetwork ? (
+          <Text textAlign="center">Please switch to the xDAI chain.</Text>
+        ) : (
+          <List spacing={3} my={0}>
+            <ListItem>
+              <TokenInput symbol="xHOPR" address={address} value={xHOPRBalance} setValue={setxHOPRBalance} handleSwap={() => transferAndCallToken(provider, xHOPRBalance)} />
+            </ListItem>
+            <ListItem>
+              <TokenInput symbol="wxHOPR" address={address} value={wxHOPRBalance} setValue={setwxHOPRBalance} handleSwap={() => transferToken(provider, wxHOPRBalance)} />
+            </ListItem>
+          </List>
+        )
+      }
       <ConnectWallet
         address={address}
         onClick={handleConnectWeb3}
