@@ -4,7 +4,7 @@ import { ActionButton } from "./ActionButton";
 
 export const ConnectWallet = ({ address, onClick, isLoading }) => {
   return address ? (
-    <Text>Wallet {address} connected</Text>
+    <Text>Wallet {address} connected.</Text>
   ) : (
     <ActionButton onClick={onClick} isLoading={isLoading}>
       Connect Wallet

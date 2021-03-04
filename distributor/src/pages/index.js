@@ -19,16 +19,18 @@ import { DarkModeSwitch } from "../components/DarkModeSwitch";
 
 const Index = () => {
   const [balance, setBalance] = useState(0);
-  const [bountiesClaimable, setBountiesClaimable] = useState(0);
-  const [marketingClaimable, setMarketingClaimable] = useState(0);
+  const [claimable, setClaimable] = useState([]);
   const [web3Modal, setWeb3Modal] = useState();
   const [isLoading, setLoading] = useState(false);
   const [provider, setProvider] = useState();
+  const [chainId, setChainId] = useState();
   const [wallet, setWallet] = useState();
   const [address, setAddress] = useState();
 
+  const XDAI_CHAIN_ID = 100;
   const distributor_CONTRACT_ADDRESS =
     "0x987cb736fbfbc4a397acd06045bf0cd9b9defe66";
+  const schedules = ["marketing", "bounties"];
 
   const getClaimable = async (provider, account, scheduleName) => {
     const abi = [
@@ -86,20 +88,29 @@ const Index = () => {
     const balance = await provider.getBalance(address);
     const network = await provider.getNetwork();
 
-    const claimable = await Promise.all([
-      getClaimable(provider, address, "bounties"),
-      getClaimable(provider, address, "marketing"),
-    ]);
+    const claimable = await Promise.all(
+      schedules.map(async (schedule) => {
+        const amount = await getClaimable(provider, address, schedule);
+
+        return {
+          schedule,
+          claimable: amount,
+          claimablePretty: ethers.utils.formatEther(amount),
+        };
+      })
+    ).then((list) => list.filter((o) => o.claimable > 0));
 
     setProvider(provider);
+    setChainId(network.chainId);
     setWallet(wallet);
     setAddress(address);
     setBalance(ethers.utils.formatEther(balance));
-    setBountiesClaimable(ethers.utils.formatEther(claimable[0]));
-    setMarketingClaimable(ethers.utils.formatEther(claimable[1]));
+    setClaimable(claimable);
     console.log(network, balance, wallet, provider);
     setLoading(false);
   };
+
+  const wrongNetwork = chainId !== XDAI_CHAIN_ID;
 
   return (
     <Container height="100vh">
@@ -108,22 +119,29 @@ const Index = () => {
         <Text textAlign="center">
           Utility to claim locked <Code>wxHOPR</Code>.
         </Text>
-        <List spacing={7} my={0}>
-          <ListItem>
-            <Claimable
-              name="bounties"
-              claimable={bountiesClaimable}
-              onClick={() => claim(provider, "bounties")}
-            />
-          </ListItem>
-          <ListItem>
-            <Claimable
-              name="marketing"
-              claimable={marketingClaimable}
-              onClick={() => claim(provider, "marketing")}
-            />
-          </ListItem>
-        </List>
+
+        {!wallet ? null : isLoading ? (
+          <Text textAlign="center">Fetching schedules..</Text>
+        ) : wrongNetwork ? (
+          <Text textAlign="center">Please switch to the xDAI chain.</Text>
+        ) : claimable.length === 0 ? (
+          <Text textAlign="center">Nothing to claim.</Text>
+        ) : (
+          claimable.map((o) => {
+            return (
+              <List spacing={7} my={0}>
+                <ListItem>
+                  <Claimable
+                    name={o.schedule}
+                    claimable={o.claimablePretty}
+                    onClick={() => claim(provider, o.schedule)}
+                  />
+                </ListItem>
+              </List>
+            );
+          })
+        )}
+
         <ConnectWallet
           address={address}
           onClick={handleConnectWeb3}
