@@ -1,12 +1,11 @@
 import {
-  Input, InputGroup, InputLeftAddon, InputRightElement,
+  Input, InputGroup, InputLeftAddon, InputRightElement, Spinner
 } from "@chakra-ui/react"
-import { useState } from 'react'
 
 import { ActionButton } from './ActionButton';
 
 
-export const TokenInput = ({ symbol = "Plant", value = 0, displayOnly=false, address, setValue, handleSwap}) => {
+export const TokenInput = ({ symbol = "Plant", value = 0, displayOnly=false, address, setValue, handleSwap, waiting}) => {
   const format = (event) => event && Number(event.target.value).toFixed(2) || "0.00"
   return (
     <InputGroup>
@@ -26,8 +25,8 @@ export const TokenInput = ({ symbol = "Plant", value = 0, displayOnly=false, add
       </Input>
       <InputRightElement width="10rem">
         {
-          value > 0 && address && <ActionButton h="1.75rem" size="sm" mr="5px" onClick={handleSwap}>
-          Do it!
+          value > 0 && address && <ActionButton h="1.75rem" size="sm" mr="5px" onClick={handleSwap} disabled={waiting}>
+            {waiting ? <Spinner /> : "Do it!"}
           </ActionButton>
         }
       </InputRightElement>

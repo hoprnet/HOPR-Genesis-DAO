@@ -18,7 +18,7 @@ const CONTRACT_ADDRESSES = {
     network: "Kovan testnet",
     hopr: "0xdE05bB0d847ac6f6128425B1d97654Bc9E94f434",
     pool: "0xc2A11f70FFFbc9D18954bc3742DC2eF57d9f74a8",
-    farm: "0x6Ce47b960dFB4121709f07a1459DD52F34647e97"
+    farm: "0x713bAdD773A3776C43442be746584d0616c9Ee67"
   }, 
   1: {
     network: "Ethereum mainnet",
@@ -29,8 +29,13 @@ const CONTRACT_ADDRESSES = {
 };
 
 const tokenABI = ["function balanceOf(address) view returns (uint)"];
-const poolABI = ["function allowance(address owner, address spender) view returns (uint256)"];
-const farmABI = ["function incentiveToBeClaimed(address provider) public view returns (uint256)"];
+const poolABI = ["function allowance(address owner, address spender) view returns (uint256)", "function nonces(address owner) view returns(uint256)"];
+const farmABI = [
+  "function incentiveToBeClaimed(address provider) public view returns (uint256)",
+  "function openFarmWithPermit(uint256 amount, address owner, uint256 deadline, uint8 v, bytes32 r, bytes32 s)",
+  "function openFarm(uint256 amount)",
+  "function claimAndClose()"
+];
 
 const Index = () => {
   const [web3Modal, setWeb3Modal] = useState();
@@ -49,6 +54,9 @@ const Index = () => {
   const [hoprAddress, setHoprAddress] = useState("");
   const [poolAddress, setPoolAddress] = useState("");
   const [farmAddress, setFarmAddress] = useState("");
+
+  const [waitForPlant, setWaitForPlant] = useState(false);
+  const [waitForHarvest, setWaitForHarvest] = useState(false);
 
   const updateUserData = async () => {
     setLoading(true);
@@ -90,34 +98,79 @@ const Index = () => {
     setLoading(false);
   };
 
-  const approveAndFarm = async (provider, amount, allowance) => {
-    if (amount.gt(allowance)) {
-      // if approve is needed
-      const poolAbi = ['function approve(address spender, uint256 amount) returns (bool)'];
-      const poolContract = new ethers.Contract(
-        poolAddress,
-        poolAbi,
-        provider.getSigner(),
-      );
-      // Not doing increaseAllowance, but full speed to max uin256 instead.
-      const approveTx = await poolContract.approve(farmAddress, ethers.constants.MaxUint256.toString());
-      // wait for 3 block
-      await provider.waitForTransaction(approveTx.hash, BLOCK_CONFIRMATION);
-    }
-    // stake tokens to the pool
-    const farmAbi = ["function openFarm(uint256 amount)"]
+  const approveAndFarm = async (provider, seedBalance, allowance) => {
+    setWaitForPlant(true);
     const farmContract = new ethers.Contract(
       farmAddress,
-      farmAbi,
+      farmABI,
       provider.getSigner()
-    )
-    const tx = await farmContract.openFarm(amount);
-    // wait for 3 block
-    await provider.waitForTransaction(tx.hash, BLOCK_CONFIRMATION);
+    ); 
+    const amount = ethers.BigNumber.isBigNumber(seedBalance) ? seedBalance : ethers.utils.parseUnits(seedBalance);
+    if (amount.lte(allowance)) {
+      // call `openFarm` to stake tokens to the farm
+      const tx = await farmContract.openFarm(amount);
+      // wait for 3 block
+      await provider.waitForTransaction(tx.hash, BLOCK_CONFIRMATION);
+      setWaitForPlant(false);
+    } else {
+      // if approve is needed, call `openFarmWithPermit`
+      // // prepare signature, assuming prospective LP wants to stake all of their UNI tokens.
+      const poolContract = new ethers.Contract(
+        poolAddress,
+        poolABI,
+        provider.getSigner()
+      ); 
+      const nonce = await poolContract.nonces(address);
+      const deadline = Math.floor(Date.now()/1000 + 360); // 6 min timeout
+      const msgParams = {
+        domain: {
+          chainId,
+          name: "Uniswap V2",
+          verifyingContract: poolAddress,
+          version: '1',
+        },
+        message: {
+          owner: address,
+          spender: farmAddress,
+          value: amount.toString(),
+          nonce: nonce.toString(),
+          deadline
+        },
+        primaryType: 'Permit',
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ],
+          Permit: [
+            { name: 'owner', type: 'address' },
+            { name: 'spender', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' },
+          ]
+        }
+      }
+      try {
+        const rawSig = await provider.send("eth_signTypedData_v4", [address, JSON.stringify(msgParams)]);
+        const {v, r, s} = ethers.utils.splitSignature(rawSig);
+        console.log("[DEBUG]", rawSig, v, r, s);
+
+        // prepare `openFarmWithPermit`
+        const tx = await farmContract.openFarmWithPermit(amount, address, deadline, v, r, s)
+        // wait for 3 block
+        await provider.waitForTransaction(tx.hash, BLOCK_CONFIRMATION);
+      } catch (error) {
+        console.log(error)
+      }
+      setWaitForPlant(false);
+    }
   };
 
   const claimAndClose = async (provider, virtualEarning) => {
-    const farmAbi = ['function claimAndClose()'];
+    setWaitForHarvest(true);
     const farmContract = new ethers.Contract(
       farmAddress,
       farmAbi,
@@ -128,6 +181,7 @@ const Index = () => {
       const claimTx =await farmContract.claimAndClose();
       await provider.waitForTransaction(claimTx.hash, BLOCK_CONFIRMATION);
     }
+    setWaitForHarvest(false);
   };
 
   // trigger on initial load
@@ -199,10 +253,24 @@ const Index = () => {
       <UniModal onClose={updateUserData} highlight={provider ? true : false}/>
       <List spacing={3} my={0}>
         <ListItem>
-          <TokenInput symbol="Plant" address={address} value={ethers.utils.formatEther(seedBalance)} setValue={setSeedBalance} handleSwap={() => approveAndFarm(provider, seedBalance, allowance)} />
+          <TokenInput 
+            symbol="Plant"
+            address={address}
+            value={seedBalance ? ethers.BigNumber.isBigNumber(seedBalance) ? ethers.utils.formatEther(seedBalance) : ethers.utils.formatEther(ethers.utils.parseUnits(seedBalance)) : "0"}
+            setValue={setSeedBalance}
+            handleSwap={() => approveAndFarm(provider, seedBalance, allowance)}
+            waiting={waitForPlant}
+          />
         </ListItem>
         <ListItem>
-          <TokenInput symbol="Harvest" address={address} displayOnly={true} value={ethers.utils.formatEther(virtualEarning)} handleSwap={() => claimAndClose(provider, virtualEarning)} />
+          <TokenInput 
+            symbol="Harvest" 
+            address={address} 
+            displayOnly={true} 
+            value={ethers.utils.formatEther(virtualEarning)}
+            handleSwap={() => claimAndClose(provider, virtualEarning)}
+            waiting={waitForHarvest}
+          />
         </ListItem>
       </List>
 
