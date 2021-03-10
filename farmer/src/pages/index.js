@@ -156,7 +156,6 @@ const Index = () => {
       try {
         const rawSig = await provider.send("eth_signTypedData_v4", [address, JSON.stringify(msgParams)]);
         const {v, r, s} = ethers.utils.splitSignature(rawSig);
-        console.log("[DEBUG]", rawSig, v, r, s);
 
         // prepare `openFarmWithPermit`
         const tx = await farmContract.openFarmWithPermit(amount, address, deadline, v, r, s)
