@@ -5,8 +5,9 @@ import {
 import { ActionButton } from './ActionButton';
 
 
-export const TokenInput = ({ symbol = "Plant", value = 0, displayOnly=false, address, setValue, handleSwap, waiting}) => {
+export const TokenInput = ({ symbol = "Plant", action = "Do it!", value = 0, displayOnly=false, address, setValue, handleSwap, waiting, additionalRequirement}) => {
   const format = (event) => event && Number(event.target.value).toFixed(2) || "0.00"
+  const warning = additionalRequirement ?? true;
   return (
     <InputGroup>
       <InputLeftAddon children={
@@ -25,8 +26,8 @@ export const TokenInput = ({ symbol = "Plant", value = 0, displayOnly=false, add
       </Input>
       <InputRightElement width="10rem">
         {
-          value > 0 && address && <ActionButton h="1.75rem" size="sm" mr="5px" onClick={handleSwap} disabled={waiting}>
-            {waiting ? <Spinner /> : "Do it!"}
+          value > 0 && address && warning && <ActionButton h="1.75rem" size="sm" mr="5px" onClick={handleSwap} disabled={waiting}>
+            {waiting ? <Spinner /> : action}
           </ActionButton>
         }
       </InputRightElement>

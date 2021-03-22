@@ -1,8 +1,8 @@
 import Head from "next/head";
 import { ChakraProvider, ColorModeProvider } from '@chakra-ui/react'
 
-import theme from '../theme'
-import { Fonts } from "../fonts"
+import theme from '../styles/theme'
+import { Fonts } from "../styles/fonts"
 
 
 function MyApp({ Component, pageProps }) {

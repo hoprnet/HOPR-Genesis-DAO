@@ -1,9 +1,8 @@
-import { Text, Code, List, ListItem } from "@chakra-ui/react";
+import { Text, Code, List, ListItem, Link } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import Web3Modal from "web3modal";
 import Web3 from 'web3';
-import { ethers } from "ethers";
-
+import { BigNumber, constants, ethers } from "ethers";
 import { Hero } from '../components/Hero'
 import { Container } from '../components/Container'
 import { ConnectWallet } from '../components/ConnectWallet'
@@ -11,17 +10,29 @@ import { Main } from '../components/Main'
 import { TokenInput } from '../components/TokenInput'
 import { DarkModeSwitch } from '../components/DarkModeSwitch'
 import { UniModal } from "../components/UniModal";
+import { DEFAULT_COUNTDOWN, TOTAL_CLAIM_PERIOD, WEEKLY_BLOCK_NUMBER, ProgressBar } from "../components/ProgressBar";
+import { ExternalLinkIcon } from "@chakra-ui/icons";
 
 const BLOCK_CONFIRMATION = 3; // default number of blocks for confirmation
+const TEN_MINUTE_MS = 600000;
 const CONTRACT_ADDRESSES = {
   42: {
-    network: "Kovan testnet",
+    networkName: "Kovan",
+    networkType: "testnet",
     hopr: "0xdE05bB0d847ac6f6128425B1d97654Bc9E94f434",
     pool: "0xc2A11f70FFFbc9D18954bc3742DC2eF57d9f74a8",
     farm: "0x713bAdD773A3776C43442be746584d0616c9Ee67"
   }, 
+  4: {
+    networkName: "Rinkeby",
+    networkType: "testnet",
+    hopr: "0x3eeEF5e497F3B937724289E4f2254CAFeeCcB994",
+    pool: "0xEF25A0fc7A0aFd29579f5e774999c0795d2aa9b9",
+    farm: "0x2c7a1e89a5A45Ccfe36a7B16e553d54C87ac2663"
+  }, 
   1: {
-    network: "Ethereum mainnet",
+    networkName: "Ethereum",
+    networkType: "mainnet",
     hopr: "0xf5581dfefd8fb0e4aec526be659cfab1f8c781da",
     pool: "0x92c2fc5f306405eab0ff0958f6d85d7f8892cf4d",
     farm: "0x" // TODO: Update when farm is deployed on mainnet
@@ -34,7 +45,10 @@ const farmABI = [
   "function incentiveToBeClaimed(address provider) public view returns (uint256)",
   "function openFarmWithPermit(uint256 amount, address owner, uint256 deadline, uint8 v, bytes32 r, bytes32 s)",
   "function openFarm(uint256 amount)",
-  "function claimAndClose()"
+  "function claimFor(address provider)",
+  "function claimAndClose()",
+  "function liquidityProviders(address provider) view returns (tuple(uint256 claimedUntil, uint256 currentBalance) liquidityProviders)",
+  "function distributionBlocks(uint256) view returns(uint256)"
 ];
 
 const Index = () => {
@@ -50,6 +64,10 @@ const Index = () => {
   const [seedBalance, setSeedBalance] = useState(0);
   const [allowance, setAllowance] = useState(0);
   const [virtualEarning, setVirtualEarning] = useState(0);
+  const [currentStake, setCurrentStake] = useState(0);
+  const [startBlock, setStartBlock] = useState(0);
+  const [currentPeriod, setCurrentPeriod] = useState(0);
+  const [nextPeriodCountdown, setNextPeriodCountdown] = useState(DEFAULT_COUNTDOWN);
 
   const [hoprAddress, setHoprAddress] = useState("");
   const [poolAddress, setPoolAddress] = useState("");
@@ -89,9 +107,16 @@ const Index = () => {
         // update farm contract
         const farmContract = new ethers.Contract(farmAddress, farmABI, provider);
         const virtualEarning = await farmContract.incentiveToBeClaimed(address);
+        const currentStakeTuple = await farmContract.liquidityProviders(address);
+        const startBlock = (await farmContract.distributionBlocks(0)).toNumber();
         setVirtualEarning(virtualEarning)
+        setCurrentStake(currentStakeTuple[1])
+        setStartBlock(startBlock)
+        await updatePeriod(startBlock);
       } catch (error) {
         setVirtualEarning(0)
+        setCurrentStake(0)
+        setStartBlock(0)
       }
   
     }
@@ -168,14 +193,29 @@ const Index = () => {
     }
   };
 
-  const claimAndClose = async (provider, virtualEarning) => {
+  const claimOnly = async (provider, virtualEarning) => {
     setWaitForHarvest(true);
     const farmContract = new ethers.Contract(
       farmAddress,
-      farmAbi,
+      farmABI,
       provider.getSigner()
     ) 
     if (virtualEarning.gt(ethers.constants.Zero)) {
+      // need to claim earnings and close farm
+      const claimTx =await farmContract.claimFor(address);
+      await provider.waitForTransaction(claimTx.hash, BLOCK_CONFIRMATION);
+    }
+    setWaitForHarvest(false);
+  };
+
+  const claimAndClose = async (provider, currentStake) => {
+    setWaitForHarvest(true);
+    const farmContract = new ethers.Contract(
+      farmAddress,
+      farmABI,
+      provider.getSigner()
+    ) 
+    if (currentStake.gt(ethers.constants.Zero)) {
       // need to claim earnings and close farm
       const claimTx =await farmContract.claimAndClose();
       await provider.waitForTransaction(claimTx.hash, BLOCK_CONFIRMATION);
@@ -237,23 +277,53 @@ const Index = () => {
     setLoading(false)
   }
 
+  const updatePeriod = async(startBlock) => {
+    if (startBlock > 0) {
+      // calculate currentPeriod and countdown to next period
+      const currentBlockNumber = await provider.getBlockNumber();
+      const currentPeriod = currentBlockNumber <= startBlock ? 0 : Math.floor((currentBlockNumber - startBlock - 1)/WEEKLY_BLOCK_NUMBER) + 1;
+      const nextPeriodCountdown = currentPeriod > TOTAL_CLAIM_PERIOD ? 0 : startBlock + currentPeriod * WEEKLY_BLOCK_NUMBER - currentBlockNumber + 1
+
+      setCurrentPeriod(currentPeriod)
+      setNextPeriodCountdown(nextPeriodCountdown)
+    } else {
+      setCurrentPeriod(0)
+      setNextPeriodCountdown(DEFAULT_COUNTDOWN)
+    }
+  }
+
+  // trigger every 10 minutes when contract is known
+  useEffect(() => {
+    const interval = setInterval(() => {
+      updatePeriod(startBlock);
+    }, TEN_MINUTE_MS );
+  
+    return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
+  }, [])
+
   return (<Container height="100vh">
     <Hero />
     <Main>
-      <Text>
-        Utility for HOPR-DAI liquidity mining on Uniswap. Deposit (Plant) Uniswap HOPR-DAI liquidity tokens (<Code>UNI-V2</Code>) to claim (harvest) HOPR tokens.
+      <Text mb={3}>
+        Utility for HOPR-DAI liquidity mining on Uniswap. Deposit (plant) Uniswap HOPR-DAI liquidity tokens (<Code>UNI-V2</Code>) to claim (harvest) <Link href="https://etherscan.io/token/0xf5581dfefd8fb0e4aec526be659cfab1f8c781da" isExternal>
+            HOPR tokens<ExternalLinkIcon mx="2px" />
+          </Link>.
       </Text>
       <ConnectWallet
         address={address}
         onClick={handleConnectWeb3}
         isLoading={isLoading}
-        network={CONTRACT_ADDRESSES.hasOwnProperty(chainId) ? CONTRACT_ADDRESSES[chainId].network : "wrong network"}
-      />
+        networkName={CONTRACT_ADDRESSES.hasOwnProperty(chainId) ? CONTRACT_ADDRESSES[chainId].networkName : "wrong"}
+        networkType={CONTRACT_ADDRESSES.hasOwnProperty(chainId) ? CONTRACT_ADDRESSES[chainId].networkType : "network"}
+      >
+        <ProgressBar currentPeriod={currentPeriod} countdown={nextPeriodCountdown}/>
+      </ConnectWallet>
       <UniModal onClose={updateUserData} highlight={provider ? true : false}/>
       <List spacing={3} my={0}>
         <ListItem>
           <TokenInput 
             symbol="Plant"
+            action="Stake UNI-V2"
             address={address}
             value={seedBalance ? ethers.BigNumber.isBigNumber(seedBalance) ? ethers.utils.formatEther(seedBalance) : ethers.utils.formatEther(ethers.utils.parseUnits(seedBalance)) : "0"}
             setValue={setSeedBalance}
@@ -264,13 +334,26 @@ const Index = () => {
         <ListItem>
           <TokenInput 
             symbol="Harvest" 
+            action="Claim HOPR"
             address={address} 
             displayOnly={true} 
             value={ethers.utils.formatEther(virtualEarning)}
-            handleSwap={() => claimAndClose(provider, virtualEarning)}
+            handleSwap={() => claimOnly(provider, virtualEarning)}
             waiting={waitForHarvest}
           />
         </ListItem>
+        <ListItem>
+          <TokenInput 
+            symbol="Destroy"
+            action="Withdraw UNI-V2"
+            address={address} 
+            displayOnly={true} 
+            value={ethers.utils.formatEther(currentStake)}
+            additionalRequirement={currentPeriod>1}
+            handleSwap={() => claimAndClose(provider, currentStake)}
+            waiting={waitForHarvest}
+          />
+        </ListItem>    
       </List>
 
     </Main>
