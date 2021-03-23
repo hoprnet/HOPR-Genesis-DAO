@@ -28,7 +28,7 @@ const CONTRACT_ADDRESSES = {
     networkType: "testnet",
     hopr: "0x3eeEF5e497F3B937724289E4f2254CAFeeCcB994",
     pool: "0xEF25A0fc7A0aFd29579f5e774999c0795d2aa9b9",
-    farm: "0x2c7a1e89a5A45Ccfe36a7B16e553d54C87ac2663"
+    farm: "0x556b77c613228ac60579d178BAAB7CF9aB078de0"
   }, 
   1: {
     networkName: "Ethereum",
@@ -47,6 +47,7 @@ const farmABI = [
   "function openFarm(uint256 amount)",
   "function claimFor(address provider)",
   "function claimAndClose()",
+  "function closeFarm(uint256 amount)",
   "function liquidityProviders(address provider) view returns (tuple(uint256 claimedUntil, uint256 currentBalance) liquidityProviders)",
   "function distributionBlocks(uint256) view returns(uint256)"
 ];
@@ -75,6 +76,7 @@ const Index = () => {
 
   const [waitForPlant, setWaitForPlant] = useState(false);
   const [waitForHarvest, setWaitForHarvest] = useState(false);
+  const [waitForDestroy, setWaitForDestroy] = useState(false);
 
   const updateUserData = async () => {
     setLoading(true);
@@ -209,18 +211,18 @@ const Index = () => {
   };
 
   const claimAndClose = async (provider, currentStake) => {
-    setWaitForHarvest(true);
+    setWaitForDestroy(true);
     const farmContract = new ethers.Contract(
       farmAddress,
       farmABI,
       provider.getSigner()
     ) 
     if (currentStake.gt(ethers.constants.Zero)) {
-      // need to claim earnings and close farm
-      const claimTx =await farmContract.claimAndClose();
+      // need to claim earnings, if applicable, and close farm
+      const claimTx = virtualEarning.gt(ethers.constants.Zero) ? await farmContract.claimAndClose() : await farmContract.closeFarm(currentStake);
       await provider.waitForTransaction(claimTx.hash, BLOCK_CONFIRMATION);
     }
-    setWaitForHarvest(false);
+    setWaitForDestroy(false);
   };
 
   // trigger on initial load
@@ -256,6 +258,16 @@ const Index = () => {
     if (chainId && address) updateUserData();
   }, [chainId, address]);
 
+  // trigger once tx is mined
+  useEffect(() => {
+    if (!waitForPlant && chainId && address) updateUserData();
+  }, [waitForPlant]);
+  useEffect(() => {
+    if (!waitForHarvest && chainId && address) updateUserData();
+  }, [waitForHarvest]);
+  useEffect(() => {
+    if (!waitForDestroy && chainId && address) updateUserData(); 
+  }, [waitForDestroy]);
 
   const handleConnectWeb3 = async() => {
     setLoading(true)
@@ -351,7 +363,7 @@ const Index = () => {
             value={ethers.utils.formatEther(currentStake)}
             additionalRequirement={currentPeriod>1}
             handleSwap={() => claimAndClose(provider, currentStake)}
-            waiting={waitForHarvest}
+            waiting={waitForDestroy}
           />
         </ListItem>    
       </List>

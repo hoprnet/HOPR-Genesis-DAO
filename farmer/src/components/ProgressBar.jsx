@@ -4,12 +4,12 @@ import { GiFarmTractor } from "react-icons/gi";
 
 export const DEFAULT_COUNTDOWN = 99999;
 export const TOTAL_CLAIM_PERIOD = 13;
-export const WEEKLY_BLOCK_NUMBER = 44800; 
+export const WEEKLY_BLOCK_NUMBER = 700; 
 
 export const ProgressBar = ({ currentPeriod, countdown}) => {
     const isText = currentPeriod === 0 && countdown === DEFAULT_COUNTDOWN || currentPeriod > TOTAL_CLAIM_PERIOD;
-    const value = isText ? 0 : ((1 + currentPeriod) * WEEKLY_BLOCK_NUMBER - countdown)/(TOTAL_CLAIM_PERIOD * WEEKLY_BLOCK_NUMBER);
-    // const {colorMode} = useColorMode() //colorScheme={color[colorMode]}
+    const value = isText ? 0 : ((1 + currentPeriod) * WEEKLY_BLOCK_NUMBER - countdown)/(TOTAL_CLAIM_PERIOD * WEEKLY_BLOCK_NUMBER) * 100;
+    
   return (
     <Box my={4}>
         {
