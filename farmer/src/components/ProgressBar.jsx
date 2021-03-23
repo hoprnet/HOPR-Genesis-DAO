@@ -4,7 +4,7 @@ import { GiFarmTractor } from "react-icons/gi";
 
 export const DEFAULT_COUNTDOWN = 99999;
 export const TOTAL_CLAIM_PERIOD = 13;
-export const WEEKLY_BLOCK_NUMBER = 700; 
+export const WEEKLY_BLOCK_NUMBER = 44800; 
 
 export const ProgressBar = ({ currentPeriod, countdown}) => {
     const isText = currentPeriod === 0 && countdown === DEFAULT_COUNTDOWN || currentPeriod > TOTAL_CLAIM_PERIOD;
@@ -15,9 +15,9 @@ export const ProgressBar = ({ currentPeriod, countdown}) => {
         {
             isText ? <Text>{currentPeriod > TOTAL_CLAIM_PERIOD ? "Farm is closed!" : "Farm has not started yet."}</Text> :
             <Slider aria-label="slider-ex-4" value={value} size="lg" isReadOnly my={4}>
-            <Tooltip label="Farm ends" placement="bottom-end" isOpen mt={2}>
+            <Tooltip label="Farm end" placement="bottom-end" isOpen mt={2}>
                 <SliderTrack size="xl" h={5}>
-                    <Tooltip label="Farm starts" placement="bottom-start" isOpen mt={2}>
+                    <Tooltip label="Farm start" placement="bottom-start" isOpen mt={2}>
                         <SliderFilledTrack bg="farmProgress.200"/>
                     </Tooltip>
                 </SliderTrack>

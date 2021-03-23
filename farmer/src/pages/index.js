@@ -16,26 +16,12 @@ import { ExternalLinkIcon } from "@chakra-ui/icons";
 const BLOCK_CONFIRMATION = 3; // default number of blocks for confirmation
 const TEN_MINUTE_MS = 600000;
 const CONTRACT_ADDRESSES = {
-  42: {
-    networkName: "Kovan",
-    networkType: "testnet",
-    hopr: "0xdE05bB0d847ac6f6128425B1d97654Bc9E94f434",
-    pool: "0xc2A11f70FFFbc9D18954bc3742DC2eF57d9f74a8",
-    farm: "0x713bAdD773A3776C43442be746584d0616c9Ee67"
-  }, 
-  4: {
-    networkName: "Rinkeby",
-    networkType: "testnet",
-    hopr: "0x3eeEF5e497F3B937724289E4f2254CAFeeCcB994",
-    pool: "0xEF25A0fc7A0aFd29579f5e774999c0795d2aa9b9",
-    farm: "0x556b77c613228ac60579d178BAAB7CF9aB078de0"
-  }, 
   1: {
     networkName: "Ethereum",
     networkType: "mainnet",
     hopr: "0xf5581dfefd8fb0e4aec526be659cfab1f8c781da",
     pool: "0x92c2fc5f306405eab0ff0958f6d85d7f8892cf4d",
-    farm: "0x" // TODO: Update when farm is deployed on mainnet
+    farm: "0x2fc0e2cfe5d6ea300d555e5907319a5f7e09884f"
   }
 };
 
@@ -317,9 +303,13 @@ const Index = () => {
     <Hero />
     <Main>
       <Text mb={3}>
-        Utility for HOPR-DAI liquidity mining on Uniswap. Deposit (plant) Uniswap HOPR-DAI liquidity tokens (<Code>UNI-V2</Code>) to claim (harvest) <Link href="https://etherscan.io/token/0xf5581dfefd8fb0e4aec526be659cfab1f8c781da" isExternal>
-            HOPR tokens<ExternalLinkIcon mx="2px" />
-          </Link>.
+        Utility for HOPR-DAI liquidity mining on Uniswap. Deposit (plant) Uniswap HOPR-DAI liquidity tokens (
+          <Link href="https://etherscan.io/token/0x92c2fc5f306405eab0ff0958f6d85d7f8892cf4d" isExternal>
+            <Code>UNI-V2</Code><ExternalLinkIcon mx="2px" />
+          </Link>) to claim (harvest) <Link 
+            href="https://etherscan.io/token/0xf5581dfefd8fb0e4aec526be659cfab1f8c781da" isExternal>
+            <Code>HOPR</Code><ExternalLinkIcon mx="2px" />
+          </Link>tokens.
       </Text>
       <ConnectWallet
         address={address}
