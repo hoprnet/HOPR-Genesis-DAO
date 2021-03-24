@@ -295,8 +295,9 @@ const Index = () => {
     const interval = setInterval(() => {
       updatePeriod(startBlock);
     }, TEN_MINUTE_MS );
-  
-    return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
+    if (startBlock > 0) {
+      return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
+    }
   }, [])
 
   return (<Container height="100vh">
@@ -351,7 +352,6 @@ const Index = () => {
             address={address} 
             displayOnly={true} 
             value={ethers.utils.formatEther(currentStake)}
-            additionalRequirement={currentPeriod>1}
             handleSwap={() => claimAndClose(provider, currentStake)}
             waiting={waitForDestroy}
           />

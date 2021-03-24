@@ -7,13 +7,13 @@ export const TOTAL_CLAIM_PERIOD = 13;
 export const WEEKLY_BLOCK_NUMBER = 44800; 
 
 export const ProgressBar = ({ currentPeriod, countdown}) => {
-    const isText = currentPeriod === 0 && countdown === DEFAULT_COUNTDOWN || currentPeriod > TOTAL_CLAIM_PERIOD;
+    const isText = (currentPeriod === 0 && countdown === DEFAULT_COUNTDOWN) || currentPeriod > TOTAL_CLAIM_PERIOD;
     const value = isText ? 0 : ((1 + currentPeriod) * WEEKLY_BLOCK_NUMBER - countdown)/(TOTAL_CLAIM_PERIOD * WEEKLY_BLOCK_NUMBER) * 100;
     
   return (
     <Box my={4}>
         {
-            isText ? <Text>{currentPeriod > TOTAL_CLAIM_PERIOD ? "Farm is closed!" : "Farm has not started yet."}</Text> :
+            isText ? <Text>{currentPeriod > TOTAL_CLAIM_PERIOD ? "Farm is closed! Please destroy your farm." : "Farm has not been configured yet."}</Text> :
             <Slider aria-label="slider-ex-4" value={value} size="lg" isReadOnly my={4}>
             <Tooltip label="Farm end" placement="bottom-end" isOpen mt={2}>
                 <SliderTrack size="xl" h={5}>
