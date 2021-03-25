@@ -12,6 +12,7 @@ import { DarkModeSwitch } from '../components/DarkModeSwitch'
 import { UniModal } from "../components/UniModal";
 import { DEFAULT_COUNTDOWN, TOTAL_CLAIM_PERIOD, WEEKLY_BLOCK_NUMBER, ProgressBar } from "../components/ProgressBar";
 import { ExternalLinkIcon } from "@chakra-ui/icons";
+import useRecursiveTimeout from "../lib/recursiveTimeout";
 
 const BLOCK_CONFIRMATION = 3; // default number of blocks for confirmation
 const TEN_MINUTE_MS = 600000;
@@ -21,12 +22,13 @@ const CONTRACT_ADDRESSES = {
     networkType: "mainnet",
     hopr: "0xf5581dfefd8fb0e4aec526be659cfab1f8c781da",
     pool: "0x92c2fc5f306405eab0ff0958f6d85d7f8892cf4d",
-    farm: "0x2fc0e2cfe5d6ea300d555e5907319a5f7e09884f"
+    farm: "0x2fc0e2cfe5d6ea300d555e5907319a5f7e09884f",
+    startBlock: 12141500
   }
 };
 
 const tokenABI = ["function balanceOf(address) view returns (uint)"];
-const poolABI = ["function allowance(address owner, address spender) view returns (uint256)", "function nonces(address owner) view returns(uint256)"];
+const poolABI = ["function allowance(address owner, address spender) view returns (uint256)", "function nonces(address owner) view returns(uint256)", "function approve(address spender, uint value) external returns (bool)"];
 const farmABI = [
   "function incentiveToBeClaimed(address provider) public view returns (uint256)",
   "function openFarmWithPermit(uint256 amount, address owner, uint256 deadline, uint8 v, bytes32 r, bytes32 s)",
@@ -52,7 +54,6 @@ const Index = () => {
   const [allowance, setAllowance] = useState(0);
   const [virtualEarning, setVirtualEarning] = useState(0);
   const [currentStake, setCurrentStake] = useState(0);
-  const [startBlock, setStartBlock] = useState(0);
   const [currentPeriod, setCurrentPeriod] = useState(0);
   const [nextPeriodCountdown, setNextPeriodCountdown] = useState(DEFAULT_COUNTDOWN);
 
@@ -96,15 +97,12 @@ const Index = () => {
         const farmContract = new ethers.Contract(farmAddress, farmABI, provider);
         const virtualEarning = await farmContract.incentiveToBeClaimed(address);
         const currentStakeTuple = await farmContract.liquidityProviders(address);
-        const startBlock = (await farmContract.distributionBlocks(0)).toNumber();
         setVirtualEarning(virtualEarning)
         setCurrentStake(currentStakeTuple[1])
-        setStartBlock(startBlock)
-        await updatePeriod(startBlock);
+        await updatePeriod();
       } catch (error) {
         setVirtualEarning(0)
         setCurrentStake(0)
-        setStartBlock(0)
       }
   
     }
@@ -176,6 +174,13 @@ const Index = () => {
         await provider.waitForTransaction(tx.hash, BLOCK_CONFIRMATION);
       } catch (error) {
         console.log(error)
+        // ledger does not support signing typed data through MM. Two tx: approve and openFarm
+        // approve UNI token transfer
+        const approveTx = await poolContract.approve(farmAddress, amount);
+        await provider.waitForTransaction(approveTx.hash, BLOCK_CONFIRMATION);
+        const openFarmTx = await farmContract.openFarm(amount);
+        // wait for 3 block
+        await provider.waitForTransaction(openFarmTx.hash, BLOCK_CONFIRMATION);
       }
       setWaitForPlant(false);
     }
@@ -275,30 +280,20 @@ const Index = () => {
     setLoading(false)
   }
 
-  const updatePeriod = async(startBlock) => {
-    if (startBlock > 0) {
+  const updatePeriod = async() => {
+    if (CONTRACT_ADDRESSES.hasOwnProperty(chainId)) {
+      const {startBlock} = CONTRACT_ADDRESSES[chainId]
       // calculate currentPeriod and countdown to next period
       const currentBlockNumber = await provider.getBlockNumber();
       const currentPeriod = currentBlockNumber <= startBlock ? 0 : Math.floor((currentBlockNumber - startBlock - 1)/WEEKLY_BLOCK_NUMBER) + 1;
       const nextPeriodCountdown = currentPeriod > TOTAL_CLAIM_PERIOD ? 0 : startBlock + currentPeriod * WEEKLY_BLOCK_NUMBER - currentBlockNumber + 1
-
+  
       setCurrentPeriod(currentPeriod)
       setNextPeriodCountdown(nextPeriodCountdown)
-    } else {
-      setCurrentPeriod(0)
-      setNextPeriodCountdown(DEFAULT_COUNTDOWN)
     }
   }
 
-  // trigger every 10 minutes when contract is known
-  useEffect(() => {
-    const interval = setInterval(() => {
-      updatePeriod(startBlock);
-    }, TEN_MINUTE_MS );
-    if (startBlock > 0) {
-      return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
-    }
-  }, [])
+  useRecursiveTimeout(() => updatePeriod(), TEN_MINUTE_MS);
 
   return (<Container height="100vh">
     <Hero />
@@ -319,7 +314,7 @@ const Index = () => {
         networkName={CONTRACT_ADDRESSES.hasOwnProperty(chainId) ? CONTRACT_ADDRESSES[chainId].networkName : "wrong"}
         networkType={CONTRACT_ADDRESSES.hasOwnProperty(chainId) ? CONTRACT_ADDRESSES[chainId].networkType : "network"}
       >
-        <ProgressBar currentPeriod={currentPeriod} countdown={nextPeriodCountdown}/>
+        <ProgressBar currentPeriod={currentPeriod} countdown={nextPeriodCountdown} rightChain={CONTRACT_ADDRESSES.hasOwnProperty(chainId)}/>
       </ConnectWallet>
       <UniModal onClose={updateUserData} highlight={provider ? true : false}/>
       <List spacing={3} my={0}>
