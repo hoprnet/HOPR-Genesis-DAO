@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Web3Modal from "web3modal";
 import Web3 from 'web3';
 import { BigNumber, constants, ethers } from "ethers";
+import Fortmatic from "fortmatic";
+
 import { Hero } from '../components/Hero'
 import { Container } from '../components/Container'
 import { ConnectWallet } from '../components/ConnectWallet'
@@ -221,7 +223,14 @@ const Index = () => {
     const loadModal = () => {
       const _web3Modal = new Web3Modal({
         cacheProvider: true,
-        providerOptions: {}
+        providerOptions: {
+          fortmatic: {
+            package: Fortmatic, // required
+            options: {
+                key: "pk_live_AB45EC6FDFB1C5C5" // required
+            }
+          },
+        }
       });
       setWeb3Modal(_web3Modal)
     }
@@ -269,12 +278,14 @@ const Index = () => {
       web3Provider.currentProvider,
     );
 
-    modalProvider.on("accountsChanged", (accounts) => setAddress(accounts[0]));
-    modalProvider.on("chainChanged", (_chainId) =>
-      setProvider(new ethers.providers.Web3Provider(
-        web3Provider.currentProvider,
-      ))
-    );
+    if (modalProvider !== null && modalProvider.on) {
+      modalProvider.on("accountsChanged", (accounts) => setAddress(accounts[0]));
+      modalProvider.on("chainChanged", (_chainId) =>
+        setProvider(new ethers.providers.Web3Provider(
+          web3Provider.currentProvider,
+        ))
+      );
+    }
     
     setProvider(provider);
     setLoading(false)
