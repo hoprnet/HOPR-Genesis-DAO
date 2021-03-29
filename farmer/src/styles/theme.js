@@ -13,6 +13,16 @@ const breakpoints = createBreakpoints({
 const theme = extendTheme({
   colors: {
     black: '#16161D',
+    hoprBlue: {
+      500: '#000050CC'
+    },
+    hoprYellow: {
+      200: '#FFFFA0CC'
+    },
+    farmProgress: {
+      200: '#C6CA53',
+      500: '#7B7263'
+    }
   },
   fonts,
   breakpoints,
@@ -36,6 +46,9 @@ const theme = extendTheme({
       viewBox: '0 0 3000 3163',
     },
   },
+  zIndices: {
+    modal: 1900
+  }
 })
 
 export default theme

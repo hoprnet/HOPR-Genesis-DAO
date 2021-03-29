@@ -1,11 +1,16 @@
+import Head from "next/head";
 import { ChakraProvider, ColorModeProvider } from '@chakra-ui/react'
 
-import theme from '../theme'
-import { Fonts } from "../fonts"
+import theme from '../styles/theme'
+import { Fonts } from "../styles/fonts"
 
 
 function MyApp({ Component, pageProps }) {
   return (
+    <>
+    <Head>
+      <title>Hopr Farm</title>
+    </Head>
     <ChakraProvider resetCSS theme={theme}>
       <Fonts />
       <ColorModeProvider
@@ -16,6 +21,7 @@ function MyApp({ Component, pageProps }) {
         <Component {...pageProps} />
       </ColorModeProvider>
     </ChakraProvider>
+    </>
   )
 }
 
