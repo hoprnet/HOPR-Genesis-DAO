@@ -7,7 +7,7 @@ export const WEEKLY_BLOCK_NUMBER = 44800;
 
 export const ProgressBar = ({ currentPeriod, countdown, rightChain}) => {
     const isText = (!rightChain) || currentPeriod > TOTAL_CLAIM_PERIOD;
-    const value = isText ? 0 : ((1 + currentPeriod) * WEEKLY_BLOCK_NUMBER - countdown)/(TOTAL_CLAIM_PERIOD * WEEKLY_BLOCK_NUMBER) * 100;
+    const value = isText || currentPeriod === 0 ? 0 : (currentPeriod * WEEKLY_BLOCK_NUMBER - countdown)/(TOTAL_CLAIM_PERIOD * WEEKLY_BLOCK_NUMBER) * 100;
     
   return (
     <Box my={4}>
