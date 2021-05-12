@@ -44,7 +44,7 @@ export const UniModal = ({highlight}) => {
             <AspectRatio ratio={3/4}>
               <iframe
                 title="uniswap-add-liquidity"
-                src={`https://app.uniswap.org/#/add/0x6B175474E89094C44Da98b954EedeAC495271d0F-0xF5581dFeFD8Fb0e4aeC526bE659CFaB1f8c781dA?theme=${colorMode}`}
+                src={`https://app.uniswap.org/#/add/v2/0x6B175474E89094C44Da98b954EedeAC495271d0F/0xF5581dFeFD8Fb0e4aeC526bE659CFaB1f8c781dA?theme=${colorMode}`}
                 allowFullScreen
                 onLoad={hideText}
               />
